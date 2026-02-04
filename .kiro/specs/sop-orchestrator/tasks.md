@@ -6,27 +6,27 @@ This implementation plan breaks down the SOP Orchestrator feature into discrete 
 
 ## Tasks
 
-- [ ] 1. Set up project foundation
-  - [ ] 1.1 Install dependencies (gray-matter, zod, fast-check, vitest)
+- [x] 1. Set up project foundation
+  - [x] 1.1 Install dependencies (gray-matter, zod, fast-check, vitest)
     - Add gray-matter and zod to dependencies
     - Add fast-check and vitest to devDependencies
     - Configure vitest in package.json
     - _Requirements: 1.1, 3.1_
 
-  - [ ] 1.2 Create type definitions in `src/types.ts`
+  - [x] 1.2 Create type definitions in `src/types.ts`
     - Define InputType, InputDef, SOPFrontmatter, SOPDefinition
     - Define ErrorMode, OrchestratorConfig, Orchestrator interface
     - Define Logger, LogEntry interfaces
     - _Requirements: 1.4, 3.1-3.8_
 
-  - [ ] 1.3 Create error classes in `src/errors.ts`
+  - [x] 1.3 Create error classes in `src/errors.ts`
     - Implement SOPError base class
     - Implement FileNotFoundError, FrontmatterParseError, FrontmatterValidationError
     - Implement DirectoryNotFoundError, OrchestratorNotFoundError, MultipleOrchestratorsError
     - Implement AgentInvocationError
     - _Requirements: 1.5, 2.1, 2.2, 2.4, 2.6, 4.5, 7.5, 7.6, 8.5_
 
-  - [ ] 1.4 Create sample SOP files for testing
+  - [x] 1.4 Create sample SOP files for testing
     - Create `test/fixtures/sops/orchestrator.md`
     - Create `test/fixtures/sops/research.md`
     - Create `test/fixtures/sops/writer.md`
