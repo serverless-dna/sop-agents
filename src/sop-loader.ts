@@ -103,7 +103,7 @@ export function validateFrontmatter(
 export function generateZodSchema(
   inputs?: Record<string, InputDef>,
 ): z.ZodObject<z.ZodRawShape> {
-  const shape: z.ZodRawShape = {
+  const shape: Record<string, z.ZodTypeAny> = {
     task: z.string().describe("The specific task to perform"),
   };
 

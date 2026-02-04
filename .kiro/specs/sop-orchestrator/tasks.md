@@ -132,8 +132,8 @@ This implementation plan breaks down the SOP Orchestrator feature into discrete 
 - [x] 6. Checkpoint - Discovery and Logger complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. Implement Tool_Generator
-  - [ ] 7.1 Implement tool creation in `src/tool-generator.ts`
+- [x] 7. Implement Tool_Generator
+  - [x] 7.1 Implement tool creation in `src/tool-generator.ts`
     - Import tool from @strands-agents/sdk
     - Create createTool function
     - Name tool as `agent_{sop.name}`
@@ -141,12 +141,12 @@ This implementation plan breaks down the SOP Orchestrator feature into discrete 
     - Use sop.zodSchema as input schema
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-  - [ ] 7.2 Implement agent prompt construction in `src/tool-generator.ts`
+  - [x] 7.2 Implement agent prompt construction in `src/tool-generator.ts`
     - Create buildAgentPrompt function
     - Format task and input parameters into structured message
     - _Requirements: 5.5, 5.6, 5.7_
 
-  - [ ] 7.3 Implement tool handler in `src/tool-generator.ts`
+  - [x] 7.3 Implement tool handler in `src/tool-generator.ts`
     - Import tool from @strands-agents/sdk
     - Create tool callback that invokes sub-agent
     - Pass task as user message
@@ -154,7 +154,7 @@ This implementation plan breaks down the SOP Orchestrator feature into discrete 
     - Return agent response
     - _Requirements: 5.5, 5.6_
 
-  - [ ] 7.4 Implement agent caching in `src/tool-generator.ts`
+  - [x] 7.4 Implement agent caching in `src/tool-generator.ts`
     - Create agent cache Map<string, Agent>
     - Implement getOrCreateAgent function
     - Return cached instance if exists
@@ -162,12 +162,12 @@ This implementation plan breaks down the SOP Orchestrator feature into discrete 
     - Implement clearCache function
     - _Requirements: 6.1, 6.2, 6.3_
 
-  - [ ] 7.5 Implement createAllTools in `src/tool-generator.ts`
+  - [x] 7.5 Implement createAllTools in `src/tool-generator.ts`
     - Create tools for all agents in registry
     - Return array of InvokableTool
     - _Requirements: 7.2_
 
-  - [ ] 7.6 Write unit tests for Tool_Generator
+  - [x] 7.6 Write unit tests for Tool_Generator
     - Test tool naming convention (agent_{name})
     - Test tool description from SOP
     - Test tool schema from SOP zodSchema
@@ -176,7 +176,7 @@ This implementation plan breaks down the SOP Orchestrator feature into discrete 
     - Test clearCache functionality
     - _Requirements: 5.1-5.7, 6.1-6.3_
 
-  - [ ] 7.7 Write property tests for Tool_Generator
+  - [x] 7.7 Write property tests for Tool_Generator
     - **Property 7: Tool Generation Correctness**
     - **Property 8: Agent Caching Idempotence**
     - **Validates: Requirements 5.1-5.7, 6.1-6.3**
