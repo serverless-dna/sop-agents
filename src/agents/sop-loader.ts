@@ -6,8 +6,12 @@ import {
 	FileNotFoundError,
 	FrontmatterParseError,
 	FrontmatterValidationError,
-} from "./errors";
-import type { InputDef, SOPDefinition, SOPFrontmatter } from "./types";
+} from "../types/errors.js";
+import type {
+	InputDef,
+	SOPDefinition,
+	SOPFrontmatter,
+} from "../types/types.js";
 
 /**
  * Validates frontmatter data against the SOPFrontmatter schema

@@ -1,14 +1,14 @@
 import fc from "fast-check";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import type { SOPDefinition, InputDef } from "../src/types";
+import type { SOPDefinition, InputDef } from "../src/types/types";
 import {
   buildAgentPrompt,
   clearCache,
   createTool,
   getOrCreateAgent,
-} from "../src/tool-generator";
-import { generateZodSchema } from "../src/sop-loader";
+} from "../src/agents/tool-generator";
+import { generateZodSchema } from "../src/agents/sop-loader";
 
 // Mock the @strands-agents/sdk module
 vi.mock("@strands-agents/sdk", () => {

@@ -1,7 +1,11 @@
 import type { InvokableTool } from "@strands-agents/sdk";
 import { Agent, tool } from "@strands-agents/sdk";
-import { BedrockModel } from "@strands-agents/sdk/bedrock";
-import type { SOPDefinition } from "./types";
+import {
+	createModelFromSpec,
+	type ModelProvider,
+	parseModelSpec,
+} from "../model-factory.js";
+import type { SOPDefinition } from "../types/types.js";
 
 /**
  * Cache for agent instances to avoid recreating agents for repeated invocations
@@ -9,9 +13,14 @@ import type { SOPDefinition } from "./types";
 const agentCache = new Map<string, Agent>();
 
 /**
- * Current default model ID for creating agents (undefined = use Strands default)
+ * Current default model spec for creating agents (undefined = use Strands default)
  */
-let currentDefaultModelId: string | undefined;
+let currentDefaultModelSpec: string | undefined;
+
+/**
+ * Current default provider when model spec has no provider prefix
+ */
+let currentDefaultProvider: ModelProvider = "bedrock";
 
 /**
  * Whether to print agent output to console (default: true, set false for non-debug)
@@ -57,21 +66,25 @@ export function getOrCreateAgent(
 	}
 
 	// Use SOP-specific model, then default, then Strands default (undefined)
-	const modelId = sop.model ?? currentDefaultModelId;
-	const modelDisplay = modelId ?? "default (Strands SDK)";
+	const modelSpec = sop.model ?? currentDefaultModelSpec;
 
-	if (logger) {
-		logger.info(`Creating agent with model: ${modelDisplay}`);
-	}
-
+	let modelDisplay: string;
 	const agentConfig: ConstructorParameters<typeof Agent>[0] = {
 		systemPrompt: sop.body,
 		tools: [],
 		printer: printerEnabled,
 	};
 
-	if (modelId) {
-		agentConfig.model = new BedrockModel({ modelId });
+	if (modelSpec) {
+		const parsed = parseModelSpec(modelSpec, currentDefaultProvider);
+		modelDisplay = `${parsed.provider}/${parsed.modelId}`;
+		agentConfig.model = createModelFromSpec(modelSpec, currentDefaultProvider);
+	} else {
+		modelDisplay = "default (Strands SDK)";
+	}
+
+	if (logger) {
+		logger.info(`Creating agent with model: ${modelDisplay}`);
 	}
 
 	const agent = new Agent(agentConfig);
@@ -80,18 +93,33 @@ export function getOrCreateAgent(
 }
 
 /**
- * Sets the default model ID for creating new agents
- * @param modelId - The model ID to use as default (undefined = use Strands default)
+ * Sets the default model spec for creating new agents
+ * @param modelSpec - The model spec to use as default (e.g., "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0")
  */
-export function setDefaultModelId(modelId: string | undefined): void {
-	currentDefaultModelId = modelId;
+export function setDefaultModelSpec(modelSpec: string | undefined): void {
+	currentDefaultModelSpec = modelSpec;
 }
 
 /**
- * Gets the current default model ID (undefined means Strands default)
+ * Gets the current default model spec (undefined means Strands default)
  */
-export function getDefaultModelId(): string | undefined {
-	return currentDefaultModelId;
+export function getDefaultModelSpec(): string | undefined {
+	return currentDefaultModelSpec;
+}
+
+/**
+ * Sets the default provider when model spec has no provider prefix
+ * @param provider - The default provider ("bedrock" or "openai")
+ */
+export function setDefaultProvider(provider: ModelProvider): void {
+	currentDefaultProvider = provider;
+}
+
+/**
+ * Gets the current default provider
+ */
+export function getDefaultProvider(): ModelProvider {
+	return currentDefaultProvider;
 }
 
 /**

@@ -1,0 +1,19 @@
+# Source and config
+src/
+test/
+sops/
+.kiro/
+.git/
+
+# Dev files
+*.config.mjs
+biome.json
+tsconfig.json
+sop-test.ts
+test-mcp.ts
+output.txt
+
+# Misc
+.DS_Store
+*.log
+.gitignore

@@ -1,9 +1,9 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AgentInvocationError } from "../src/errors";
-import { OrchestratorImpl, createOrchestrator } from "../src/orchestrator";
-import type { LogEntry } from "../src/types";
+import { AgentInvocationError } from "../src/types/errors";
+import { OrchestratorImpl, createOrchestrator } from "../src/orchestrator/orchestrator";
+import type { LogEntry } from "../src/types/types";
 
 // Mock the @strands-agents/sdk module
 vi.mock("@strands-agents/sdk", () => {
@@ -280,7 +280,7 @@ describe("printer configuration", () => {
 	let setPrinterEnabled: (enabled: boolean) => void;
 
 	beforeEach(async () => {
-		const toolGenerator = await import("../src/tool-generator");
+		const toolGenerator = await import("../src/agents/tool-generator");
 		isPrinterEnabled = toolGenerator.isPrinterEnabled;
 		setPrinterEnabled = toolGenerator.setPrinterEnabled;
 		// Reset to default

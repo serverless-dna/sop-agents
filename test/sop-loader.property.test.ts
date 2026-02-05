@@ -2,13 +2,13 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import fc from "fast-check";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { FrontmatterValidationError } from "../src/errors";
+import { FrontmatterValidationError } from "../src/types/errors";
 import {
   generateZodSchema,
   loadSOP,
   validateFrontmatter,
-} from "../src/sop-loader";
-import type { InputDef, InputType } from "../src/types";
+} from "../src/agents/sop-loader";
+import type { InputDef, InputType } from "../src/types/types";
 
 const TEMP_DIR = "test/fixtures/temp-property";
 

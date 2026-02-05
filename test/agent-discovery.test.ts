@@ -4,9 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DirectoryNotFoundError,
   MultipleOrchestratorsError,
-  OrchestratorNotFoundError,
-} from "../src/errors";
-import { discoverAgents, findOrchestrator } from "../src/agent-discovery";
+} from "../src/types/errors";
+import { discoverAgents, findOrchestrator } from "../src/agents/discovery";
+import { DEFAULT_ORCHESTRATOR } from "../src/orchestrator/default-orchestrator";
 
 describe("discoverAgents", () => {
   it("should discover multiple agents from a directory", async () => {
@@ -92,7 +92,7 @@ describe("findOrchestrator", () => {
     );
   });
 
-  it("should throw OrchestratorNotFoundError when no orchestrator exists", async () => {
+  it("should return default orchestrator when no orchestrator exists", async () => {
     const tempDir = "test/fixtures/no-orchestrator-temp";
     fs.mkdirSync(tempDir, { recursive: true });
     
@@ -108,9 +108,12 @@ type: agent
     );
 
     try {
-      await expect(findOrchestrator(tempDir)).rejects.toThrow(
-        OrchestratorNotFoundError,
-      );
+      const orchestrator = await findOrchestrator(tempDir);
+      
+      // Should return the default orchestrator
+      expect(orchestrator.name).toBe(DEFAULT_ORCHESTRATOR.name);
+      expect(orchestrator.type).toBe("orchestrator");
+      expect(orchestrator.filepath).toBe("<built-in>");
     } finally {
       fs.unlinkSync(path.join(tempDir, "agent.md"));
       fs.rmdirSync(tempDir);
@@ -152,10 +155,13 @@ type: orchestrator
     }
   });
 
-  it("should skip invalid files when searching for orchestrator", async () => {
+  it("should return default orchestrator when only invalid files exist", async () => {
     // The invalid fixtures directory has no valid orchestrator
-    await expect(findOrchestrator("test/fixtures/invalid")).rejects.toThrow(
-      OrchestratorNotFoundError,
-    );
+    const orchestrator = await findOrchestrator("test/fixtures/invalid");
+    
+    // Should return the default orchestrator
+    expect(orchestrator.name).toBe(DEFAULT_ORCHESTRATOR.name);
+    expect(orchestrator.type).toBe("orchestrator");
+    expect(orchestrator.filepath).toBe("<built-in>");
   });
 });

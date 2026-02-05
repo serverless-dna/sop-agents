@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import fc from "fast-check";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { discoverAgents } from "../src/agent-discovery";
+import { discoverAgents } from "../src/agents/discovery";
 
 const TEMP_DIR = "test/fixtures/temp-discovery";
 

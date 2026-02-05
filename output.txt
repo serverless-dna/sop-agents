@@ -1,9 +1,0 @@
-=== INITIALIZING ORCHESTRATOR ===
-
-=== SENDING REQUEST TO ORCHESTRATOR ===
-
-Request: "Write me an uplifting poem about Valentine's Day"
-
-[2026-02-05T01:34:29.033Z] [INFO] [req-1770255269033-0zby02s] Processing request: Write me an uplifting poem about Valentine's Day...
-[2026-02-05T01:34:32.224Z] [INFO] [poet] Invoking agent with task: "write an uplifting poem..."
-[2026-02-05T01:34:32.225Z] [INFO] [poet] Starting execution with task: "write an uplifting poem..."

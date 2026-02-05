@@ -3,12 +3,12 @@ import {
   FileNotFoundError,
   FrontmatterParseError,
   FrontmatterValidationError,
-} from "../src/errors";
+} from "../src/types/errors";
 import {
   generateZodSchema,
   loadSOP,
   validateFrontmatter,
-} from "../src/sop-loader";
+} from "../src/agents/sop-loader";
 
 describe("validateFrontmatter", () => {
   const filepath = "test.md";

@@ -1,4 +1,4 @@
-import type { LogEntry, Logger, LogLevel } from "./types";
+import type { LogEntry, Logger, LogLevel } from "./types/types.js";
 
 /**
  * Log level priority for filtering

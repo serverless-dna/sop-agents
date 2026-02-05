@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createOrchestrator } from "../src/orchestrator";
-import { clearCache } from "../src/tool-generator";
+import { createOrchestrator } from "../src/orchestrator/orchestrator";
+import { clearCache } from "../src/agents/tool-generator";
 
 // Track tool invocations for verification
 const toolInvocations: Array<{ name: string; task: string }> = [];

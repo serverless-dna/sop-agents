@@ -1,12 +1,12 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { DEFAULT_ORCHESTRATOR } from "../orchestrator/default-orchestrator.js";
 import {
 	DirectoryNotFoundError,
 	MultipleOrchestratorsError,
-	OrchestratorNotFoundError,
-} from "./errors";
-import { loadSOP } from "./sop-loader";
-import type { SOPDefinition } from "./types";
+} from "../types/errors.js";
+import type { SOPDefinition } from "../types/types.js";
+import { loadSOP } from "./sop-loader.js";
 
 /**
  * Scans a directory for SOP files and builds an agent registry.
@@ -64,11 +64,11 @@ export async function discoverAgents(
 
 /**
  * Finds the orchestrator SOP in a directory.
+ * Returns the built-in default orchestrator if none is found.
  *
  * @param directory - Path to scan (default: "./sops")
- * @returns The single orchestrator SOPDefinition
+ * @returns The orchestrator SOPDefinition (user-defined or default)
  * @throws DirectoryNotFoundError if directory doesn't exist
- * @throws OrchestratorNotFoundError if no orchestrator found
  * @throws MultipleOrchestratorsError if more than one orchestrator found
  */
 export async function findOrchestrator(
@@ -106,15 +106,15 @@ export async function findOrchestrator(
 		}
 	}
 
-	// Check for no orchestrator
-	if (orchestrators.length === 0) {
-		throw new OrchestratorNotFoundError(directory);
-	}
-
 	// Check for multiple orchestrators
 	if (orchestrators.length > 1) {
 		throw new MultipleOrchestratorsError(directory, orchestratorFiles);
 	}
 
-	return orchestrators[0];
+	// Return user-defined orchestrator or fall back to default
+	if (orchestrators.length === 1) {
+		return orchestrators[0];
+	}
+
+	return DEFAULT_ORCHESTRATOR;
 }
