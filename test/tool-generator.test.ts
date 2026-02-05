@@ -7,6 +7,8 @@ import {
   createAllTools,
   createTool,
   getOrCreateAgent,
+  isPrinterEnabled,
+  setPrinterEnabled,
 } from "../src/tool-generator";
 
 // Mock the @strands-agents/sdk module
@@ -22,6 +24,15 @@ vi.mock("@strands-agents/sdk", () => {
     }
     
     async invoke(_prompt: string) {
+      return {
+        lastMessage: {
+          content: [{ type: "textBlock", text: "Mock response" }],
+        },
+      };
+    }
+
+    async *stream(_prompt: string) {
+      yield { type: "modelContentBlockDeltaEvent", delta: { type: "textDelta", text: "Mock response" } };
       return {
         lastMessage: {
           content: [{ type: "textBlock", text: "Mock response" }],
@@ -213,5 +224,28 @@ describe("createAllTools", () => {
     const tools = createAllTools(registry);
 
     expect(tools).toHaveLength(0);
+  });
+});
+
+
+describe("setPrinterEnabled / isPrinterEnabled", () => {
+  afterEach(() => {
+    // Reset to default (enabled)
+    setPrinterEnabled(true);
+  });
+
+  it("should default to printer enabled", () => {
+    expect(isPrinterEnabled()).toBe(true);
+  });
+
+  it("should disable printer when set to false", () => {
+    setPrinterEnabled(false);
+    expect(isPrinterEnabled()).toBe(false);
+  });
+
+  it("should enable printer when set to true", () => {
+    setPrinterEnabled(false);
+    setPrinterEnabled(true);
+    expect(isPrinterEnabled()).toBe(true);
   });
 });

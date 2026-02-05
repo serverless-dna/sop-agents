@@ -26,6 +26,15 @@ vi.mock("@strands-agents/sdk", () => {
 				},
 			};
 		}
+
+		async *stream(_prompt: string) {
+			yield { type: "modelContentBlockDeltaEvent", delta: { type: "textDelta", text: "Mock response" } };
+			return {
+				lastMessage: {
+					content: [{ type: "textBlock", text: "Mock response" }],
+				},
+			};
+		}
 	}
 
 	return {

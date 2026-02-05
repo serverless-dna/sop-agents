@@ -23,6 +23,15 @@ vi.mock("@strands-agents/sdk", () => {
 				},
 			};
 		}
+
+		async *stream(_prompt: string) {
+			yield { type: "modelContentBlockDeltaEvent", delta: { type: "textDelta", text: "Mock orchestrator response" } };
+			return {
+				lastMessage: {
+					content: [{ type: "textBlock", text: "Mock orchestrator response" }],
+				},
+			};
+		}
 	}
 
 	return {
@@ -262,5 +271,60 @@ describe("logging", () => {
 		expect(calls).toContain("completed");
 
 		consoleSpy.mockRestore();
+	});
+});
+
+describe("printer configuration", () => {
+	// Import the printer functions to verify state
+	let isPrinterEnabled: () => boolean;
+	let setPrinterEnabled: (enabled: boolean) => void;
+
+	beforeEach(async () => {
+		const toolGenerator = await import("../src/tool-generator");
+		isPrinterEnabled = toolGenerator.isPrinterEnabled;
+		setPrinterEnabled = toolGenerator.setPrinterEnabled;
+		// Reset to default
+		setPrinterEnabled(true);
+	});
+
+	afterEach(() => {
+		// Reset to default
+		setPrinterEnabled(true);
+	});
+
+	it("should disable printer when logLevel is info (default)", () => {
+		new OrchestratorImpl({
+			directory: "test/fixtures/sops",
+			logLevel: "info",
+		});
+
+		expect(isPrinterEnabled()).toBe(false);
+	});
+
+	it("should disable printer when logLevel is warn", () => {
+		new OrchestratorImpl({
+			directory: "test/fixtures/sops",
+			logLevel: "warn",
+		});
+
+		expect(isPrinterEnabled()).toBe(false);
+	});
+
+	it("should disable printer when logLevel is error", () => {
+		new OrchestratorImpl({
+			directory: "test/fixtures/sops",
+			logLevel: "error",
+		});
+
+		expect(isPrinterEnabled()).toBe(false);
+	});
+
+	it("should enable printer when logLevel is debug", () => {
+		new OrchestratorImpl({
+			directory: "test/fixtures/sops",
+			logLevel: "debug",
+		});
+
+		expect(isPrinterEnabled()).toBe(true);
 	});
 });

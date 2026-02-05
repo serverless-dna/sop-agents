@@ -1,13 +1,24 @@
 import type { Agent, InvokableTool } from "@strands-agents/sdk";
 import { Agent as StrandsAgent } from "@strands-agents/sdk";
+import { BedrockModel } from "@strands-agents/sdk/bedrock";
 import { discoverAgents, findOrchestrator } from "./agent-discovery";
 import { AgentInvocationError } from "./errors";
 import { LoggerImpl } from "./logger";
-import { clearCache as clearToolCache, createAllTools } from "./tool-generator";
+import {
+	clearCache as clearToolCache,
+	createAllTools,
+	getOrCreateAgent,
+	setDefaultModelId,
+	setPrinterEnabled,
+} from "./tool-generator";
 import type {
+	ErrorMode,
+	InvokeResult,
 	Logger,
+	LogLevel,
 	Orchestrator,
 	OrchestratorConfig,
+	OrchestratorStreamEvent,
 	SOPDefinition,
 } from "./types";
 
@@ -19,22 +30,42 @@ function generateCorrelationId(): string {
 }
 
 /**
+ * Internal resolved configuration (all required fields have values)
+ */
+interface ResolvedOrchestratorConfig {
+	directory: string;
+	errorMode: ErrorMode;
+	logLevel: LogLevel;
+	defaultModel?: string;
+	showThinking: boolean;
+}
+
+/**
  * OrchestratorImpl class implementing the Orchestrator interface
  */
 export class OrchestratorImpl implements Orchestrator {
-	private readonly _config: OrchestratorConfig;
+	private readonly _config: ResolvedOrchestratorConfig;
 	private registry: Map<string, SOPDefinition> = new Map();
 	private orchestratorAgent: Agent | null = null;
 	private orchestratorSOP: SOPDefinition | null = null;
 	private logger: Logger;
+	private currentCorrelationId?: string;
 
 	constructor(config: OrchestratorConfig = {}) {
 		this._config = {
 			directory: config.directory ?? "./sops",
 			errorMode: config.errorMode ?? "fail-fast",
 			logLevel: config.logLevel ?? "info",
+			defaultModel: config.defaultModel,
+			showThinking: config.showThinking ?? false,
 		};
 		this.logger = new LoggerImpl(this._config.logLevel);
+
+		// Set the default model for tool-generator (undefined = use Strands default)
+		setDefaultModelId(this._config.defaultModel);
+
+		// Only print agent output to console in debug mode
+		setPrinterEnabled(this._config.logLevel === "debug");
 	}
 
 	/**
@@ -62,23 +93,43 @@ export class OrchestratorImpl implements Orchestrator {
 		// Wrap tools with error handling and logging
 		const wrappedTools = this.wrapToolsWithErrorHandling(tools);
 
+		// Determine model for orchestrator (SOP-specific, config default, or Strands default)
+		const orchestratorModelId =
+			this.orchestratorSOP.model ?? this._config.defaultModel;
+
 		// Create orchestrator agent with SOP body as system prompt
-		this.orchestratorAgent = new StrandsAgent({
+		const agentConfig: ConstructorParameters<typeof StrandsAgent>[0] = {
 			systemPrompt: this.orchestratorSOP.body,
 			tools: wrappedTools,
-		});
+			printer: this._config.logLevel === "debug",
+		};
+
+		if (orchestratorModelId) {
+			agentConfig.model = new BedrockModel({ modelId: orchestratorModelId });
+		}
+
+		this.orchestratorAgent = new StrandsAgent(agentConfig);
 	}
 
 	/**
 	 * Process a request through the orchestrator agent
 	 */
 	async invoke(request: string): Promise<string> {
+		const result = await this.invokeWithDetails(request);
+		return result.response;
+	}
+
+	/**
+	 * Process a request and return detailed result including thinking
+	 */
+	async invokeWithDetails(request: string): Promise<InvokeResult> {
 		if (!this.orchestratorAgent) {
 			throw new Error("Orchestrator not initialized. Call initialize() first.");
 		}
 
-		// Generate correlation ID for request
+		// Generate correlation ID for request and store it for tool access
 		const correlationId = generateCorrelationId();
+		this.currentCorrelationId = correlationId;
 		const requestLogger = this.logger.withCorrelationId(correlationId);
 
 		// Log request start
@@ -87,30 +138,116 @@ export class OrchestratorImpl implements Orchestrator {
 		});
 
 		const startTime = Date.now();
+		const thinking: string[] = [];
+		const toolCalls: Array<{ name: string; input: Record<string, unknown> }> =
+			[];
+		let responseText = "";
 
 		try {
-			// Invoke orchestrator agent with request
-			const result = await this.orchestratorAgent.invoke(request);
+			// Use streaming to capture thinking and tool calls
+			for await (const event of this.orchestratorAgent.stream(request)) {
+				// Capture thinking/reasoning content
+				if (
+					event.type === "modelContentBlockDeltaEvent" &&
+					// biome-ignore lint/suspicious/noExplicitAny: SDK event types vary
+					(event as any).delta?.type === "thinkingDelta"
+				) {
+					// biome-ignore lint/suspicious/noExplicitAny: SDK event types vary
+					const thinkingText = (event as any).delta?.thinking;
+					if (thinkingText && this._config.showThinking) {
+						thinking.push(thinkingText);
+						requestLogger.debug(
+							`Thinking: ${thinkingText.substring(0, 100)}...`,
+						);
+					}
+				}
+
+				// Capture text content
+				if (
+					event.type === "modelContentBlockDeltaEvent" &&
+					// biome-ignore lint/suspicious/noExplicitAny: SDK event types vary
+					(event as any).delta?.type === "textDelta"
+				) {
+					// biome-ignore lint/suspicious/noExplicitAny: SDK event types vary
+					responseText += (event as any).delta?.text ?? "";
+				}
+
+				// Capture tool use starts
+				if (
+					event.type === "modelContentBlockStartEvent" &&
+					// biome-ignore lint/suspicious/noExplicitAny: SDK event types vary
+					(event as any).start?.type === "toolUseStart"
+				) {
+					// biome-ignore lint/suspicious/noExplicitAny: SDK event types vary
+					const toolName = (event as any).start?.name;
+					if (toolName) {
+						requestLogger.debug(`Tool selected: ${toolName}`);
+					}
+				}
+
+				// Capture tool calls from beforeToolsEvent
+				if (event.type === "beforeToolsEvent") {
+					// biome-ignore lint/suspicious/noExplicitAny: SDK event types vary
+					const toolUses = (event as any).toolUses;
+					if (Array.isArray(toolUses)) {
+						for (const toolUse of toolUses) {
+							toolCalls.push({
+								name: toolUse.name,
+								input: toolUse.input as Record<string, unknown>,
+							});
+						}
+					}
+				}
+			}
 
 			const duration = Date.now() - startTime;
 			requestLogger.info(`Request completed in ${duration}ms`);
 
-			// Extract text content from the result
-			const lastMessage = result.lastMessage;
-			if (!lastMessage) {
-				return "";
-			}
-
-			const textContent = lastMessage.content
-				.filter((block) => block.type === "textBlock")
-				.map((block) => (block as { type: "textBlock"; text: string }).text)
-				.join("\n");
-
-			return textContent;
+			return {
+				response: responseText,
+				thinking: thinking.length > 0 ? thinking : undefined,
+				toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+			};
 		} catch (error) {
 			const duration = Date.now() - startTime;
 			requestLogger.error(
 				`Request failed after ${duration}ms`,
+				error instanceof Error ? error : new Error(String(error)),
+			);
+			throw error;
+		}
+	}
+
+	/**
+	 * Stream events from the orchestrator in real-time
+	 */
+	async *stream(request: string): AsyncGenerator<OrchestratorStreamEvent> {
+		if (!this.orchestratorAgent) {
+			throw new Error("Orchestrator not initialized. Call initialize() first.");
+		}
+
+		// Generate correlation ID for request and store it for tool access
+		const correlationId = generateCorrelationId();
+		this.currentCorrelationId = correlationId;
+		const requestLogger = this.logger.withCorrelationId(correlationId);
+
+		requestLogger.info(`Streaming request: ${request.substring(0, 100)}...`, {
+			requestLength: request.length,
+		});
+
+		const startTime = Date.now();
+
+		try {
+			for await (const event of this.orchestratorAgent.stream(request)) {
+				yield event as OrchestratorStreamEvent;
+			}
+
+			const duration = Date.now() - startTime;
+			requestLogger.info(`Stream completed in ${duration}ms`);
+		} catch (error) {
+			const duration = Date.now() - startTime;
+			requestLogger.error(
+				`Stream failed after ${duration}ms`,
 				error instanceof Error ? error : new Error(String(error)),
 			);
 			throw error;
@@ -139,27 +276,41 @@ export class OrchestratorImpl implements Orchestrator {
 	): InvokableTool<Record<string, unknown>, string>[] {
 		return tools.map((originalTool) => {
 			const agentName = originalTool.name.replace(/^agent_/, "");
+			const sop = this.registry.get(agentName);
 
 			const wrappedInvoke = async (
 				input: Record<string, unknown>,
 			): Promise<string> => {
-				const agentLogger = this.logger.withAgent(agentName);
+				// Get logger with current correlation ID and agent name
+				const agentLogger = this.currentCorrelationId
+					? this.logger
+							.withCorrelationId(this.currentCorrelationId)
+							.withAgent(agentName)
+					: this.logger.withAgent(agentName);
 				const task = input.task as string;
 				const startTime = Date.now();
 
-				// Log invocation start
-				agentLogger.info(`Invoking agent with task: ${task}`, {
-					inputs: Object.keys(input).filter((k) => k !== "task"),
-				});
+				agentLogger.debug("Tool invoke called", { input });
+
+				// Ensure agent is created with logger for model info
+				if (sop) {
+					getOrCreateAgent(sop, agentLogger);
+				}
+
+				agentLogger.info(
+					`Invoking agent with task: "${task?.substring(0, 80) ?? "NO TASK"}..."`,
+				);
 
 				try {
 					const result = await originalTool.invoke(input);
 					const duration = Date.now() - startTime;
 
-					// Log success
-					agentLogger.info(`Agent completed in ${duration}ms`, {
-						responseLength: result.length,
-					});
+					// Log completion with output preview
+					const outputPreview = result.substring(0, 200);
+					agentLogger.info(
+						`Completed in ${duration}ms (${result.length} chars)`,
+					);
+					agentLogger.debug(`Output preview: ${outputPreview}...`);
 
 					return result;
 				} catch (error) {
@@ -167,22 +318,15 @@ export class OrchestratorImpl implements Orchestrator {
 					const originalError =
 						error instanceof Error ? error : new Error(String(error));
 
-					// Log failure
 					agentLogger.error(
-						`Agent failed after ${duration}ms: ${originalError.message}`,
+						`Failed after ${duration}ms: ${originalError.message}`,
 						originalError,
-						{
-							errorType: originalError.name,
-							stack: originalError.stack,
-						},
 					);
 
-					// Handle based on error mode
 					if (this._config.errorMode === "fail-fast") {
 						throw new AgentInvocationError(agentName, task, originalError);
 					}
 
-					// In continue mode, return error information
 					return JSON.stringify({
 						success: false,
 						agentName,
@@ -194,13 +338,38 @@ export class OrchestratorImpl implements Orchestrator {
 				}
 			};
 
-			// Create a new tool object with the wrapped invoke
+			// Wrapped stream generator with logging
+			const wrappedStream = (
+				toolContext: Parameters<typeof originalTool.stream>[0],
+			) => {
+				const streamLogger = this.currentCorrelationId
+					? this.logger
+							.withCorrelationId(this.currentCorrelationId)
+							.withAgent(agentName)
+					: this.logger.withAgent(agentName);
+				const input = toolContext.toolUse.input as Record<string, unknown>;
+				const task = input?.task as string;
+
+				// Ensure agent is created with logger for model info
+				if (sop) {
+					getOrCreateAgent(sop, streamLogger);
+				}
+
+				streamLogger.info(
+					`Invoking agent with task: "${task?.substring(0, 80) ?? "NO TASK"}..."`,
+				);
+
+				// Return the original stream - logging happens at invoke level
+				return originalTool.stream(toolContext);
+			};
+
+			// Create a new tool object with the wrapped invoke and stream
 			const wrappedTool: InvokableTool<Record<string, unknown>, string> = {
 				name: originalTool.name,
 				description: originalTool.description,
 				toolSpec: originalTool.toolSpec,
 				invoke: wrappedInvoke,
-				stream: originalTool.stream,
+				stream: wrappedStream,
 			};
 
 			return wrappedTool;
