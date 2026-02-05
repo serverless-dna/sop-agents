@@ -8,8 +8,9 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "build:watch": "tsc --watch",
+    "build": "node esbuild.config.mjs && tsc --emitDeclarationOnly",
+    "build:watch": "node esbuild.config.mjs --watch",
+    "build:types": "tsc --emitDeclarationOnly",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.3.14",
     "@types/node": "^25.2.0",
+    "esbuild": "^0.27.2",
     "typescript": "^5.9.3"
   }
 }
