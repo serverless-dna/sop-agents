@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import type { SOPDefinition } from "../src/types";
+import type { SOPDefinition } from "../src/types/types";
 import {
   buildAgentPrompt,
   clearCache,
@@ -9,7 +9,7 @@ import {
   getOrCreateAgent,
   isPrinterEnabled,
   setPrinterEnabled,
-} from "../src/tool-generator";
+} from "../src/agents/tool-generator";
 
 // Mock the @strands-agents/sdk module
 vi.mock("@strands-agents/sdk", () => {

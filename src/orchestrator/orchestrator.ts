@@ -1,18 +1,20 @@
 import type { Agent, InvokableTool } from "@strands-agents/sdk";
 import { Agent as StrandsAgent } from "@strands-agents/sdk";
-import { BedrockModel } from "@strands-agents/sdk/bedrock";
-import { discoverAgents, findOrchestrator } from "./agent-discovery";
-import { AgentInvocationError } from "./errors";
-import { LoggerImpl } from "./logger";
+import { discoverAgents, findOrchestrator } from "../agents/discovery.js";
 import {
 	clearCache as clearToolCache,
 	createAllTools,
 	getOrCreateAgent,
-	setDefaultModelId,
+	setDefaultModelSpec,
+	setDefaultProvider,
 	setPrinterEnabled,
-} from "./tool-generator";
+} from "../agents/tool-generator.js";
+import { LoggerImpl } from "../logger.js";
+import { createModelFromSpec, type ModelProvider } from "../model-factory.js";
+import { AgentInvocationError } from "../types/errors.js";
 import type {
 	ErrorMode,
+	InvokeOptions,
 	InvokeResult,
 	Logger,
 	LogLevel,
@@ -20,7 +22,7 @@ import type {
 	OrchestratorConfig,
 	OrchestratorStreamEvent,
 	SOPDefinition,
-} from "./types";
+} from "../types/types.js";
 
 /**
  * Generate a unique correlation ID for request tracing
@@ -37,6 +39,7 @@ interface ResolvedOrchestratorConfig {
 	errorMode: ErrorMode;
 	logLevel: LogLevel;
 	defaultModel?: string;
+	defaultProvider: ModelProvider;
 	showThinking: boolean;
 }
 
@@ -57,12 +60,14 @@ export class OrchestratorImpl implements Orchestrator {
 			errorMode: config.errorMode ?? "fail-fast",
 			logLevel: config.logLevel ?? "info",
 			defaultModel: config.defaultModel,
+			defaultProvider: config.defaultProvider ?? "bedrock",
 			showThinking: config.showThinking ?? false,
 		};
 		this.logger = new LoggerImpl(this._config.logLevel);
 
-		// Set the default model for tool-generator (undefined = use Strands default)
-		setDefaultModelId(this._config.defaultModel);
+		// Set the default model and provider for tool-generator
+		setDefaultModelSpec(this._config.defaultModel);
+		setDefaultProvider(this._config.defaultProvider);
 
 		// Only print agent output to console in debug mode
 		setPrinterEnabled(this._config.logLevel === "debug");
@@ -94,7 +99,7 @@ export class OrchestratorImpl implements Orchestrator {
 		const wrappedTools = this.wrapToolsWithErrorHandling(tools);
 
 		// Determine model for orchestrator (SOP-specific, config default, or Strands default)
-		const orchestratorModelId =
+		const orchestratorModelSpec =
 			this.orchestratorSOP.model ?? this._config.defaultModel;
 
 		// Create orchestrator agent with SOP body as system prompt
@@ -104,8 +109,11 @@ export class OrchestratorImpl implements Orchestrator {
 			printer: this._config.logLevel === "debug",
 		};
 
-		if (orchestratorModelId) {
-			agentConfig.model = new BedrockModel({ modelId: orchestratorModelId });
+		if (orchestratorModelSpec) {
+			agentConfig.model = createModelFromSpec(
+				orchestratorModelSpec,
+				this._config.defaultProvider,
+			);
 		}
 
 		this.orchestratorAgent = new StrandsAgent(agentConfig);
@@ -114,18 +122,17 @@ export class OrchestratorImpl implements Orchestrator {
 	/**
 	 * Process a request through the orchestrator agent
 	 */
-	async invoke(request: string): Promise<string> {
-		const result = await this.invokeWithDetails(request);
-		return result.response;
-	}
-
-	/**
-	 * Process a request and return detailed result including thinking
-	 */
-	async invokeWithDetails(request: string): Promise<InvokeResult> {
+	invoke(request: string): Promise<string>;
+	invoke(request: string, options: InvokeOptions): Promise<InvokeResult>;
+	async invoke(
+		request: string,
+		options?: InvokeOptions,
+	): Promise<string | InvokeResult> {
 		if (!this.orchestratorAgent) {
 			throw new Error("Orchestrator not initialized. Call initialize() first.");
 		}
+
+		const showThinking = options?.showThinking ?? this._config.showThinking;
 
 		// Generate correlation ID for request and store it for tool access
 		const correlationId = generateCorrelationId();
@@ -154,7 +161,7 @@ export class OrchestratorImpl implements Orchestrator {
 				) {
 					// biome-ignore lint/suspicious/noExplicitAny: SDK event types vary
 					const thinkingText = (event as any).delta?.thinking;
-					if (thinkingText && this._config.showThinking) {
+					if (thinkingText && showThinking) {
 						thinking.push(thinkingText);
 						requestLogger.debug(
 							`Thinking: ${thinkingText.substring(0, 100)}...`,
@@ -203,11 +210,15 @@ export class OrchestratorImpl implements Orchestrator {
 			const duration = Date.now() - startTime;
 			requestLogger.info(`Request completed in ${duration}ms`);
 
-			return {
-				response: responseText,
-				thinking: thinking.length > 0 ? thinking : undefined,
-				toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-			};
+			// Return string if no options, InvokeResult if options provided
+			if (options) {
+				return {
+					response: responseText,
+					thinking: thinking.length > 0 ? thinking : undefined,
+					toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+				};
+			}
+			return responseText;
 		} catch (error) {
 			const duration = Date.now() - startTime;
 			requestLogger.error(

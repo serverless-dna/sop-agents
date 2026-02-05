@@ -1,11 +1,11 @@
 import * as readline from "node:readline";
-import { createOrchestrator } from "./src";
+import { createOrchestrator } from "@serverless-dna/sop-agents";
 
 async function main() {
 	console.log("=== INITIALIZING ORCHESTRATOR ===\n");
 
 	const orchestrator = await createOrchestrator({
-		directory: "./sops",
+		directory: "./examples/sops",
 		errorMode: "fail-fast",
 		logLevel: "info",
 	});
@@ -33,13 +33,11 @@ async function main() {
 
 			if (!trimmed) continue;
 
-			// Pause readline to prevent interference with streaming output
 			rl.pause();
 			process.stdout.write("\nAssistant: ");
 
 			try {
 				for await (const event of orchestrator.stream(trimmed)) {
-					// biome-ignore lint/suspicious/noExplicitAny: SDK event types vary
 					const evt = event as any;
 					if (
 						evt.type === "modelContentBlockDeltaEvent" &&

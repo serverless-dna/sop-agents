@@ -4,9 +4,9 @@ import fc from "fast-check";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
 	MultipleOrchestratorsError,
-	OrchestratorNotFoundError,
-} from "../src/errors";
-import { OrchestratorImpl } from "../src/orchestrator";
+} from "../src/types/errors";
+import { DEFAULT_ORCHESTRATOR } from "../src/orchestrator/default-orchestrator";
+import { OrchestratorImpl } from "../src/orchestrator/orchestrator";
 
 // Mock the @strands-agents/sdk module
 vi.mock("@strands-agents/sdk", () => {
@@ -148,7 +148,7 @@ type: agent
 		);
 	});
 
-	it("should fail with OrchestratorNotFoundError when no orchestrator exists", async () => {
+	it("should use default orchestrator when no orchestrator exists", async () => {
 		await fc.assert(
 			fc.asyncProperty(
 				validNameArb,
@@ -172,9 +172,12 @@ type: agent
 							directory: tempDir,
 						});
 
-						await expect(orchestrator.initialize()).rejects.toThrow(
-							OrchestratorNotFoundError,
-						);
+						// Should succeed using the default orchestrator
+						await orchestrator.initialize();
+						
+						// Registry should have the agent
+						const registry = orchestrator.getRegistry();
+						expect(registry.has(agentName)).toBe(true);
 
 						return true;
 					} finally {

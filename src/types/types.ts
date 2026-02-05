@@ -56,6 +56,11 @@ export type ErrorMode = "fail-fast" | "continue";
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
 /**
+ * Supported model providers
+ */
+export type ModelProvider = "bedrock" | "openai";
+
+/**
  * Configuration options for the orchestrator
  */
 export interface OrchestratorConfig {
@@ -63,7 +68,16 @@ export interface OrchestratorConfig {
 	errorMode?: ErrorMode; // default: "fail-fast"
 	logLevel?: LogLevel; // default: "info"
 	defaultModel?: string; // default: undefined (use Strands SDK default)
+	defaultProvider?: ModelProvider; // default: "bedrock" - used when model has no provider prefix
 	showThinking?: boolean; // default: false - log orchestrator reasoning/thinking
+}
+
+/**
+ * Options for invoke method
+ */
+export interface InvokeOptions {
+	/** Include thinking/reasoning in the result */
+	showThinking?: boolean;
 }
 
 /**
@@ -100,15 +114,10 @@ export interface Orchestrator {
 
 	/**
 	 * Process a request through the orchestrator agent
-	 * @returns Final response string (for backward compatibility)
+	 * @returns Response string when no options, InvokeResult when options provided
 	 */
 	invoke(request: string): Promise<string>;
-
-	/**
-	 * Process a request and return detailed result including thinking
-	 * @returns InvokeResult with response, thinking, and tool calls
-	 */
-	invokeWithDetails(request: string): Promise<InvokeResult>;
+	invoke(request: string, options: InvokeOptions): Promise<InvokeResult>;
 
 	/**
 	 * Stream events from the orchestrator in real-time
