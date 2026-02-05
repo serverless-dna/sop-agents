@@ -1,9 +1,9 @@
 {
   "name": "@serverless-dna/sop-agents",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Multi-agent orchestration using markdown SOPs with YAML frontmatter",
   "license": "MIT",
-  "author": "",
+  "author": "Michael Walmsley",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -33,11 +33,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/serverless-dna/sop-agents.git"
   },
   "bugs": {
-    "url": ""
+    "url": "https://github.com/serverless-dna/sop-agents/issues"
   },
+  "homepage": "https://github.com/serverless-dna/sop-agents#readme",
   "engines": {
     "node": ">=18"
   },
