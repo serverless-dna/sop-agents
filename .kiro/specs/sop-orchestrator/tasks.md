@@ -77,11 +77,11 @@ This implementation plan breaks down the SOP Orchestrator feature into discrete 
     - **Property 4: Schema Generation Type Correctness**
     - **Validates: Requirements 1.1-1.5, 2.1-2.6, 3.1-3.8**
 
-- [ ] 3. Checkpoint - SOP_Loader complete
+- [x] 3. Checkpoint - SOP_Loader complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Implement Agent_Discovery
-  - [ ] 4.1 Implement directory scanning in `src/agent-discovery.ts`
+- [x] 4. Implement Agent_Discovery
+  - [x] 4.1 Implement directory scanning in `src/agent-discovery.ts`
     - Create discoverAgents function
     - Scan directory for .md files
     - Load each file with SOP_Loader
@@ -92,7 +92,7 @@ This implementation plan breaks down the SOP Orchestrator feature into discrete 
     - Log errors for invalid files and continue processing
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-  - [ ] 4.2 Implement orchestrator discovery in `src/agent-discovery.ts`
+  - [x] 4.2 Implement orchestrator discovery in `src/agent-discovery.ts`
     - Create findOrchestrator function
     - Scan directory for .md files with type: orchestrator
     - Throw OrchestratorNotFoundError if none found
@@ -100,7 +100,7 @@ This implementation plan breaks down the SOP Orchestrator feature into discrete 
     - Return the single orchestrator SOPDefinition
     - _Requirements: 7.5, 7.6_
 
-  - [ ] 4.3 Write unit tests for Agent_Discovery
+  - [x] 4.3 Write unit tests for Agent_Discovery
     - Test discovering multiple agents
     - Test filtering out orchestrator SOPs
     - Test missing directory error
@@ -108,13 +108,13 @@ This implementation plan breaks down the SOP Orchestrator feature into discrete 
     - Test invalid file handling (continues processing)
     - _Requirements: 4.1-4.6, 7.5, 7.6_
 
-  - [ ] 4.4 Write property tests for Agent_Discovery
+  - [x] 4.4 Write property tests for Agent_Discovery
     - **Property 5: Agent Discovery Filtering**
     - **Property 6: Discovery Error Resilience**
     - **Validates: Requirements 4.1-4.6**
 
-- [ ] 5. Implement Logger
-  - [ ] 5.1 Implement Logger in `src/logger.ts`
+- [x] 5. Implement Logger
+  - [x] 5.1 Implement Logger in `src/logger.ts`
     - Create Logger class with debug, info, warn, error methods
     - Implement log level filtering
     - Implement withCorrelationId for request tracing
@@ -122,14 +122,14 @@ This implementation plan breaks down the SOP Orchestrator feature into discrete 
     - Format LogEntry with timestamp, level, correlationId, agentName, message
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
 
-  - [ ] 5.2 Write unit tests for Logger
+  - [x] 5.2 Write unit tests for Logger
     - Test log level filtering (debug, info, warn, error)
     - Test withCorrelationId context propagation
     - Test withAgent context propagation
     - Test LogEntry formatting with all fields
     - _Requirements: 9.1-9.6_
 
-- [ ] 6. Checkpoint - Discovery and Logger complete
+- [x] 6. Checkpoint - Discovery and Logger complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 7. Implement Tool_Generator
