@@ -70,6 +70,7 @@ export interface OrchestratorConfig {
 	defaultModel?: string; // default: undefined (use Strands SDK default)
 	defaultProvider?: ModelProvider; // default: "bedrock" - used when model has no provider prefix
 	showThinking?: boolean; // default: false - log orchestrator reasoning/thinking
+	tools?: Record<string, unknown>; // optional: named tool registry (e.g., MCP clients) - agents reference by name in frontmatter
 }
 
 /**

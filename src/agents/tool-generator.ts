@@ -28,6 +28,11 @@ let currentDefaultProvider: ModelProvider = "bedrock";
 let printerEnabled = true;
 
 /**
+ * Tool registry for named tools (e.g., MCP clients)
+ */
+let toolRegistry: Record<string, unknown> = {};
+
+/**
  * Builds a structured prompt for the agent from task and input parameters
  * @param task - The specific task to perform
  * @param inputs - Input parameters for the task
@@ -68,10 +73,24 @@ export function getOrCreateAgent(
 	// Use SOP-specific model, then default, then Strands default (undefined)
 	const modelSpec = sop.model ?? currentDefaultModelSpec;
 
+	// Resolve tools from the registry based on SOP's tools list
+	// biome-ignore lint/suspicious/noExplicitAny: SDK accepts flexible tool types
+	const agentTools: any[] = [];
+	if (sop.tools && sop.tools.length > 0) {
+		for (const toolName of sop.tools) {
+			const tool = toolRegistry[toolName];
+			if (tool) {
+				agentTools.push(tool);
+			} else if (logger) {
+				logger.info(`Warning: Tool "${toolName}" not found in registry`);
+			}
+		}
+	}
+
 	let modelDisplay: string;
 	const agentConfig: ConstructorParameters<typeof Agent>[0] = {
 		systemPrompt: sop.body,
-		tools: [],
+		tools: agentTools,
 		printer: printerEnabled,
 	};
 
@@ -85,6 +104,11 @@ export function getOrCreateAgent(
 
 	if (logger) {
 		logger.info(`Creating agent with model: ${modelDisplay}`);
+		if (agentTools.length > 0) {
+			logger.info(
+				`Injecting ${agentTools.length} tool(s): ${sop.tools?.join(", ")}`,
+			);
+		}
 	}
 
 	const agent = new Agent(agentConfig);
@@ -142,6 +166,21 @@ export function isPrinterEnabled(): boolean {
  */
 export function clearCache(): void {
 	agentCache.clear();
+}
+
+/**
+ * Sets the tool registry for named tools
+ * @param registry - Map of tool names to tool instances (e.g., MCP clients)
+ */
+export function setToolRegistry(registry: Record<string, unknown>): void {
+	toolRegistry = registry;
+}
+
+/**
+ * Gets the current tool registry
+ */
+export function getToolRegistry(): Record<string, unknown> {
+	return { ...toolRegistry };
 }
 
 /**

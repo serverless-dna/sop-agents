@@ -143,3 +143,129 @@ Never skip research. Never let the writer make up facts.
 
 Plain English orchestration. Override the default when you need specific workflows.
 
+## Using MCP Tools
+
+Agents can access external tools and services through the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). MCP provides a standardized way to connect agents to databases, APIs, file systems, and other capabilities.
+
+### Registering Tools
+
+Pass MCP clients as a named registry when creating the orchestrator. Each agent then declares which tools it needs in its frontmatter:
+
+```typescript
+import { createOrchestrator } from "@serverless-dna/sop-agents";
+import { McpClient } from "@strands-agents/sdk";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+
+async function main() {
+  // Create MCP clients
+  const fileSystem = new McpClient({
+    transport: new StdioClientTransport({
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "./workspace"],
+    }),
+  });
+
+  const gitTools = new McpClient({
+    transport: new StdioClientTransport({
+      command: "uvx",
+      args: ["mcp-server-git", "--repository", "."],
+    }),
+  });
+
+  // Register tools by name
+  const orchestrator = await createOrchestrator({
+    directory: "./sops",
+    tools: {
+      filesystem: fileSystem,
+      git: gitTools,
+    },
+  });
+
+  const result = await orchestrator.invoke(
+    "Review the code in src/index.ts and commit any improvements"
+  );
+
+  console.log(result);
+
+  // Clean up MCP connections when done
+  await fileSystem.disconnect();
+  await gitTools.disconnect();
+}
+
+main().catch(console.error);
+```
+
+### Declaring Tools in SOPs
+
+Agents specify which tools they need in their frontmatter. Only those tools get injected—no context pollution:
+
+```markdown
+---
+name: code-reviewer
+description: Reviews code and suggests improvements
+type: agent
+tools:
+  - filesystem
+  - git
+---
+# Code Reviewer
+
+## Overview
+
+You review code files and provide actionable feedback.
+
+## Steps
+
+### 1. Read the Code
+
+Use the filesystem tools to read the target file.
+
+**Constraints:**
+- You MUST use the `read_file` tool to access file contents
+- You MUST NOT guess at file contents because you need accurate information
+
+### 2. Commit Improvements
+
+If changes are needed, use git to commit them.
+
+**Constraints:**
+- You MUST write clear commit messages
+- You SHOULD make atomic commits for each logical change
+```
+
+The orchestrator can also declare tools in its frontmatter if it needs direct access to MCP capabilities.
+
+### Available MCP Servers
+
+| Server | Purpose | Install |
+|--------|---------|---------|
+| `@modelcontextprotocol/server-filesystem` | File system operations | `npx -y @modelcontextprotocol/server-filesystem <path>` |
+| `mcp-server-git` | Git operations | `uvx mcp-server-git --repository <path>` |
+| `@modelcontextprotocol/server-postgres` | PostgreSQL queries | `npx -y @modelcontextprotocol/server-postgres <connection-string>` |
+| `@modelcontextprotocol/server-sqlite` | SQLite database | `npx -y @modelcontextprotocol/server-sqlite <db-path>` |
+| `awslabs.aws-documentation-mcp-server` | AWS documentation | `uvx awslabs.aws-documentation-mcp-server@latest` |
+
+Browse more at [MCP Servers](https://github.com/modelcontextprotocol/servers).
+
+### HTTP-Based MCP Servers
+
+For remote MCP servers using HTTP transport:
+
+```typescript
+import { McpClient } from "@strands-agents/sdk";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+
+const remoteTools = new McpClient({
+  transport: new StreamableHTTPClientTransport(
+    new URL("https://mcp.example.com/sse")
+  ),
+});
+
+const orchestrator = await createOrchestrator({
+  directory: "./sops",
+  tools: {
+    remote: remoteTools,
+  },
+});
+```
+

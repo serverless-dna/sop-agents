@@ -8,6 +8,7 @@ import {
 	setDefaultModelSpec,
 	setDefaultProvider,
 	setPrinterEnabled,
+	setToolRegistry,
 } from "../agents/tool-generator.js";
 import { LoggerImpl } from "../logger.js";
 import { createModelFromSpec, type ModelProvider } from "../model-factory.js";
@@ -41,6 +42,7 @@ interface ResolvedOrchestratorConfig {
 	defaultModel?: string;
 	defaultProvider: ModelProvider;
 	showThinking: boolean;
+	tools: Record<string, unknown>;
 }
 
 /**
@@ -62,12 +64,16 @@ export class OrchestratorImpl implements Orchestrator {
 			defaultModel: config.defaultModel,
 			defaultProvider: config.defaultProvider ?? "bedrock",
 			showThinking: config.showThinking ?? false,
+			tools: config.tools ?? {},
 		};
 		this.logger = new LoggerImpl(this._config.logLevel);
 
 		// Set the default model and provider for tool-generator
 		setDefaultModelSpec(this._config.defaultModel);
 		setDefaultProvider(this._config.defaultProvider);
+
+		// Set the tool registry for agents to use
+		setToolRegistry(this._config.tools);
 
 		// Only print agent output to console in debug mode
 		setPrinterEnabled(this._config.logLevel === "debug");
@@ -93,23 +99,43 @@ export class OrchestratorImpl implements Orchestrator {
 		this.orchestratorSOP = await findOrchestrator(directory);
 
 		// Create tools for all agents
-		const tools = createAllTools(this.registry);
+		const agentTools = createAllTools(this.registry);
 
 		// Wrap tools with error handling and logging
-		const wrappedTools = this.wrapToolsWithErrorHandling(tools);
+		const wrappedTools = this.wrapToolsWithErrorHandling(agentTools);
+
+		// Resolve tools for the orchestrator from its frontmatter
+		// biome-ignore lint/suspicious/noExplicitAny: SDK accepts flexible tool types
+		const orchestratorMcpTools: any[] = [];
+		if (this.orchestratorSOP.tools && this.orchestratorSOP.tools.length > 0) {
+			for (const toolName of this.orchestratorSOP.tools) {
+				const tool = this._config.tools[toolName];
+				if (tool) {
+					orchestratorMcpTools.push(tool);
+				} else {
+					this.logger.info(
+						`Warning: Tool "${toolName}" not found in registry for orchestrator`,
+					);
+				}
+			}
+		}
+
+		// Combine agent tools with orchestrator's MCP tools
+		// biome-ignore lint/suspicious/noExplicitAny: SDK accepts flexible tool types
+		const allTools: any[] = [...wrappedTools, ...orchestratorMcpTools];
 
 		// Determine model for orchestrator (SOP-specific, config default, or Strands default)
 		const orchestratorModelSpec =
 			this.orchestratorSOP.model ?? this._config.defaultModel;
 
-		// Create orchestrator agent with SOP body as system prompt
+		// Create orchestrator agent with agent tools + its own MCP tools
 		const agentConfig: ConstructorParameters<typeof StrandsAgent>[0] = {
 			systemPrompt: this.orchestratorSOP.body,
-			tools: wrappedTools,
+			tools: allTools,
 			printer: this._config.logLevel === "debug",
 		};
 
-		if (orchestratorModelSpec) {
+		if (orchestratorModelSpec && agentConfig) {
 			agentConfig.model = createModelFromSpec(
 				orchestratorModelSpec,
 				this._config.defaultProvider,
