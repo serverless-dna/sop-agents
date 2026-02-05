@@ -26,6 +26,7 @@ export interface SOPFrontmatter {
 	tools?: string[]; // optional: additional tools to inject
 	inputs?: Record<string, InputDef>; // optional: input parameters
 	type?: "agent" | "orchestrator"; // defaults to "agent"
+	model?: string; // optional: model ID (e.g., "us.anthropic.claude-sonnet-4-20250514-v1:0")
 }
 
 /**
@@ -41,6 +42,7 @@ export interface SOPDefinition {
 	filepath: string; // original file path
 	type: "agent" | "orchestrator";
 	zodSchema: z.ZodObject<z.ZodRawShape>; // always has at least { task: z.string() }
+	model?: string; // optional: model ID for this agent
 }
 
 /**
@@ -60,7 +62,32 @@ export interface OrchestratorConfig {
 	directory?: string; // default: "./sops"
 	errorMode?: ErrorMode; // default: "fail-fast"
 	logLevel?: LogLevel; // default: "info"
+	defaultModel?: string; // default: undefined (use Strands SDK default)
+	showThinking?: boolean; // default: false - log orchestrator reasoning/thinking
 }
+
+/**
+ * Result from orchestrator invocation
+ */
+export interface InvokeResult {
+	/** The final response text */
+	response: string;
+	/** Orchestrator's thinking/reasoning (only populated if showThinking is enabled) */
+	thinking?: string[];
+	/** Tool calls made during execution */
+	toolCalls?: Array<{
+		name: string;
+		input: Record<string, unknown>;
+	}>;
+}
+
+/**
+ * Stream event from orchestrator (re-exported from SDK)
+ */
+export type OrchestratorStreamEvent = {
+	type: string;
+	[key: string]: unknown;
+};
 
 /**
  * Orchestrator interface for managing multi-agent orchestration
@@ -73,9 +100,21 @@ export interface Orchestrator {
 
 	/**
 	 * Process a request through the orchestrator agent
-	 * @returns Final response string
+	 * @returns Final response string (for backward compatibility)
 	 */
 	invoke(request: string): Promise<string>;
+
+	/**
+	 * Process a request and return detailed result including thinking
+	 * @returns InvokeResult with response, thinking, and tool calls
+	 */
+	invokeWithDetails(request: string): Promise<InvokeResult>;
+
+	/**
+	 * Stream events from the orchestrator in real-time
+	 * @returns AsyncGenerator of stream events
+	 */
+	stream(request: string): AsyncGenerator<OrchestratorStreamEvent>;
 
 	/**
 	 * Clear agent cache

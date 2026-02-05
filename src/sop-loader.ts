@@ -81,6 +81,7 @@ export function validateFrontmatter(
 		typeof obj.inputs === "object" && obj.inputs !== null
 			? (obj.inputs as Record<string, InputDef>)
 			: undefined;
+	const model = typeof obj.model === "string" ? obj.model : undefined;
 
 	return {
 		name: obj.name as string,
@@ -89,6 +90,7 @@ export function validateFrontmatter(
 		tools,
 		inputs,
 		type: (obj.type as "agent" | "orchestrator") ?? "agent", // Default to "agent"
+		model,
 	};
 }
 
@@ -201,5 +203,6 @@ export async function loadSOP(filepath: string): Promise<SOPDefinition> {
 		filepath,
 		type: frontmatter.type ?? "agent",
 		zodSchema,
+		model: frontmatter.model,
 	};
 }

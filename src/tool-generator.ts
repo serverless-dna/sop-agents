@@ -1,11 +1,22 @@
 import type { InvokableTool } from "@strands-agents/sdk";
 import { Agent, tool } from "@strands-agents/sdk";
+import { BedrockModel } from "@strands-agents/sdk/bedrock";
 import type { SOPDefinition } from "./types";
 
 /**
  * Cache for agent instances to avoid recreating agents for repeated invocations
  */
 const agentCache = new Map<string, Agent>();
+
+/**
+ * Current default model ID for creating agents (undefined = use Strands default)
+ */
+let currentDefaultModelId: string | undefined;
+
+/**
+ * Whether to print agent output to console (default: true, set false for non-debug)
+ */
+let printerEnabled = true;
 
 /**
  * Builds a structured prompt for the agent from task and input parameters
@@ -33,21 +44,69 @@ export function buildAgentPrompt(
 /**
  * Gets or creates a cached agent instance for the given SOP
  * @param sop - The SOP definition to create an agent for
+ * @param logger - Optional logger for logging agent creation
  * @returns The agent instance (cached or newly created)
  */
-export function getOrCreateAgent(sop: SOPDefinition): Agent {
+export function getOrCreateAgent(
+	sop: SOPDefinition,
+	logger?: { info: (msg: string) => void },
+): Agent {
 	const cached = agentCache.get(sop.name);
 	if (cached) {
 		return cached;
 	}
 
-	const agent = new Agent({
-		systemPrompt: sop.body,
-		tools: [], // Sub-agents don't get additional tools by default
-	});
+	// Use SOP-specific model, then default, then Strands default (undefined)
+	const modelId = sop.model ?? currentDefaultModelId;
+	const modelDisplay = modelId ?? "default (Strands SDK)";
 
+	if (logger) {
+		logger.info(`Creating agent with model: ${modelDisplay}`);
+	}
+
+	const agentConfig: ConstructorParameters<typeof Agent>[0] = {
+		systemPrompt: sop.body,
+		tools: [],
+		printer: printerEnabled,
+	};
+
+	if (modelId) {
+		agentConfig.model = new BedrockModel({ modelId });
+	}
+
+	const agent = new Agent(agentConfig);
 	agentCache.set(sop.name, agent);
 	return agent;
+}
+
+/**
+ * Sets the default model ID for creating new agents
+ * @param modelId - The model ID to use as default (undefined = use Strands default)
+ */
+export function setDefaultModelId(modelId: string | undefined): void {
+	currentDefaultModelId = modelId;
+}
+
+/**
+ * Gets the current default model ID (undefined means Strands default)
+ */
+export function getDefaultModelId(): string | undefined {
+	return currentDefaultModelId;
+}
+
+/**
+ * Sets whether agent output should be printed to console
+ * @param enabled - true to print output (debug), false to suppress (production)
+ */
+export function setPrinterEnabled(enabled: boolean): void {
+	printerEnabled = enabled;
+}
+
+/**
+ * Gets whether printer is enabled
+ */
+export function isPrinterEnabled(): boolean {
+	return printerEnabled;
 }
 
 /**
@@ -60,6 +119,7 @@ export function clearCache(): void {
 /**
  * Creates a Strands tool from an SOP definition
  * Tool name follows pattern: agent_{sop.name}
+ * Uses async generator to stream sub-agent output
  * @param sop - The SOP definition to create a tool from
  * @returns An InvokableTool that delegates to the agent
  */
@@ -70,24 +130,44 @@ export function createTool(
 		name: `agent_${sop.name}`,
 		description: sop.description,
 		inputSchema: sop.zodSchema,
-		callback: async (input: Record<string, unknown>): Promise<string> => {
+		callback: async function* (
+			input: Record<string, unknown>,
+		): AsyncGenerator<string, string, unknown> {
+			const task = input.task as string;
 			const agent = getOrCreateAgent(sop);
-			const prompt = buildAgentPrompt(input.task as string, input);
-			const result = await agent.invoke(prompt);
+			const prompt = buildAgentPrompt(task, input);
 
-			// Extract text content from the result
-			const lastMessage = result.lastMessage;
-			if (!lastMessage) {
-				return "";
+			// Stream from the sub-agent
+			const generator = agent.stream(prompt);
+			let result = await generator.next();
+			let fullText = "";
+
+			while (!result.done) {
+				// Process events from the sub-agent
+				// biome-ignore lint/suspicious/noExplicitAny: SDK event types vary
+				const event = result.value as any;
+				if (
+					event.type === "modelContentBlockDeltaEvent" &&
+					event.delta?.type === "textDelta"
+				) {
+					const text = event.delta.text ?? "";
+					fullText += text;
+					yield text;
+				}
+				result = await generator.next();
 			}
 
-			// Get text content from the message
-			const textContent = lastMessage.content
-				.filter((block) => block.type === "textBlock")
-				.map((block) => (block as { type: "textBlock"; text: string }).text)
-				.join("\n");
+			// Return the full text as the final result
+			const lastMessage = result.value.lastMessage;
+			if (lastMessage?.content?.[0]) {
+				const content = lastMessage.content[0];
+				if (content.type === "textBlock") {
+					return content.text;
+				}
+				return String(content);
+			}
 
-			return textContent;
+			return fullText;
 		},
 	});
 }

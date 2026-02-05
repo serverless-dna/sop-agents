@@ -26,7 +26,9 @@ export {
 	clearCache,
 	createAllTools,
 	createTool,
+	getDefaultModelId,
 	getOrCreateAgent,
+	setDefaultModelId,
 } from "./tool-generator";
 // Types
 export type {

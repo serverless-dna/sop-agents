@@ -15,14 +15,14 @@ description: Standards for creating and formatting Agent SOPs
 filters:
   # Match SOP files
   - type: file_extension
-    pattern: "\.sop\.md$"
+    pattern: "\.md$"
 
 actions:
   - type: suggest
     message: |
       Agent SOPs must follow the standard format:
       
-      1. Use `.sop.md` file extension
+      1. Use `.md` file extension
       2. Include Overview, Parameters, and Steps sections
       3. Use RFC2119 keywords (MUST, SHOULD, MAY) in constraints
       4. Provide context for all negative constraints (MUST NOT, SHOULD NOT, etc.)

@@ -113,6 +113,18 @@ vi.mock("@strands-agents/sdk", () => {
 				},
 			};
 		}
+
+		async *stream(prompt: string) {
+			// Simulate streaming by yielding events then returning final result
+			const invokeResult = await this.invoke(prompt);
+			const text = invokeResult.lastMessage?.content[0]?.text || "";
+			
+			// Yield text delta events
+			yield { type: "modelContentBlockDeltaEvent", delta: { type: "textDelta", text } };
+			
+			// Return the final result structure (this is what result.value will be when done)
+			return invokeResult;
+		}
 	}
 
 	return {
@@ -132,7 +144,28 @@ vi.mock("@strands-agents/sdk", () => {
 						name: config.name,
 						task: input.task as string,
 					});
-					return config.callback(input);
+
+					// Call the callback - it might be an async generator or regular async function
+					const result = config.callback(input);
+
+					// Check if it's an async generator (has Symbol.asyncIterator)
+					if (result && typeof result[Symbol.asyncIterator] === "function") {
+						// Consume the generator and return the final value
+						let finalValue = "";
+						let iterResult = await result.next();
+						while (!iterResult.done) {
+							// Accumulate yielded values (they're strings)
+							if (typeof iterResult.value === "string") {
+								finalValue += iterResult.value;
+							}
+							iterResult = await result.next();
+						}
+						// Return the final returned value, or accumulated string
+						return iterResult.value || finalValue;
+					}
+
+					// Regular async function - just await it
+					return result;
 				},
 				stream: vi.fn(),
 			};
