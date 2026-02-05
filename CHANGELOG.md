@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2025-02-05
+
+### Changed
+- Added repository, bugs, and homepage URLs to package.json
+- Added GitHub issue and PR templates
+- Added CODE_OF_CONDUCT.md, SECURITY.md, and CONTRIBUTING.md
+- Improved documentation and code comments in examples
+
 ## [0.1.0] - 2025-02-05
 
 ### Added
@@ -20,5 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tool generation from SOP definitions
 - Interactive chat example
 
-[Unreleased]: https://github.com/serverless-dna/sop-agents/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/serverless-dna/sop-agents/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/serverless-dna/sop-agents/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/serverless-dna/sop-agents/releases/tag/v0.1.0
