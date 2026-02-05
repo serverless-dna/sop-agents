@@ -2,6 +2,8 @@
 
 **Multi-agent orchestration for [Strands Agents](https://github.com/strands-agents/sdk-python), defined in plain text. Write what your agents do. Write how they collaborate. Done.**
 
+📖 Read the announcement: [Introducing Strands Agent SOPs](https://aws.amazon.com/blogs/opensource/introducing-strands-agent-sops-natural-language-workflows-for-ai-agents/) on the AWS Open Source Blog
+
 ```markdown
 <!-- sops/researcher.md -->
 ---
