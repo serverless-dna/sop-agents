@@ -34,8 +34,8 @@ This implementation plan breaks down the SOP Orchestrator feature into discrete 
     - Create `test/fixtures/invalid/bad-yaml.md`
     - _Requirements: All_
 
-- [ ] 2. Implement SOP_Loader
-  - [ ] 2.1 Implement frontmatter validation in `src/sop-loader.ts`
+- [x] 2. Implement SOP_Loader
+  - [x] 2.1 Implement frontmatter validation in `src/sop-loader.ts`
     - Create validateFrontmatter function
     - Validate required fields (name, description)
     - Validate type field (must be "agent" or "orchestrator" if present)
@@ -43,7 +43,7 @@ This implementation plan breaks down the SOP Orchestrator feature into discrete 
     - Throw FrontmatterValidationError with descriptive messages
     - _Requirements: 2.1, 2.2, 2.4, 2.5, 2.6_
 
-  - [ ] 2.2 Implement Zod schema generation in `src/sop-loader.ts`
+  - [x] 2.2 Implement Zod schema generation in `src/sop-loader.ts`
     - Create generateZodSchema function
     - Always include task field as z.string().describe()
     - Map InputDef types to Zod types (string, number, boolean, enum, list)
@@ -52,7 +52,7 @@ This implementation plan breaks down the SOP Orchestrator feature into discrete 
     - Apply .describe() for all fields
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8_
 
-  - [ ] 2.3 Implement file loading in `src/sop-loader.ts`
+  - [x] 2.3 Implement file loading in `src/sop-loader.ts`
     - Create loadSOP function
     - Read file and parse with gray-matter
     - Validate frontmatter
@@ -62,7 +62,7 @@ This implementation plan breaks down the SOP Orchestrator feature into discrete 
     - Log warning when name doesn't match filename
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.3_
 
-  - [ ] 2.4 Write unit tests for SOP_Loader
+  - [x] 2.4 Write unit tests for SOP_Loader
     - Test parsing valid SOP with all fields
     - Test parsing SOP with minimal fields
     - Test missing file error
@@ -70,7 +70,7 @@ This implementation plan breaks down the SOP Orchestrator feature into discrete 
     - Test name/filename mismatch warning
     - _Requirements: 1.1-1.5, 2.1-2.6_
 
-  - [ ] 2.5 Write property tests for SOP_Loader
+  - [x] 2.5 Write property tests for SOP_Loader
     - **Property 1: SOP Parsing Round-Trip**
     - **Property 2: Frontmatter Validation Rejects Invalid Input**
     - **Property 3: Type Field Defaults to Agent**
