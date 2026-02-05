@@ -242,21 +242,21 @@ This implementation plan breaks down the SOP Orchestrator feature into discrete 
     - Test context passing between agents
     - _Requirements: 10.1, 10.2, 10.3, 10.4_
 
-- [ ] 10. Implement factory function and public API
-  - [ ] 10.1 Create createOrchestrator factory in `src/orchestrator.ts`
+- [x] 10. Implement factory function and public API
+  - [x] 10.1 Create createOrchestrator factory in `src/orchestrator.ts`
     - Accept OrchestratorConfig
     - Create OrchestratorImpl instance
     - Call initialize()
     - Return initialized Orchestrator
     - _Requirements: 7.1, 7.2_
 
-  - [ ] 10.2 Export public API in `src/index.ts`
+  - [x] 10.2 Export public API in `src/index.ts`
     - Export createOrchestrator factory
     - Export all types
     - Export all error classes
     - _Requirements: All_
 
-- [ ] 11. Final checkpoint
+- [x] 11. Final checkpoint
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
