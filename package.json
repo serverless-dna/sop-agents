@@ -1,6 +1,6 @@
 {
   "name": "@serverless-dna/sop-agents",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Multi-agent orchestration using markdown SOPs with YAML frontmatter",
   "license": "MIT",
   "author": "Michael Walmsley",
@@ -63,7 +63,6 @@
   "devDependencies": {
     "@biomejs/biome": "^2.3.14",
     "@types/node": "^25.2.0",
-    "@vitest/coverage-v8": "^4.0.18",
     "fast-check": "^4.5.3",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
